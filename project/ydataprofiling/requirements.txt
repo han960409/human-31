@@ -5,3 +5,5 @@ joblib
 seaborn
 matplotlib
 scikit-learn
+tensorflow
+ydata-profiling
