@@ -94,6 +94,7 @@ defect_model = load_defect_model()
 # 3. 메인 화면 구성 (레이아웃 분할)
 col1, col2 = st.columns([1, 1.5]) # 왼쪽(사진), 오른쪽(분석 결과)
 
+
 with col1:
     st.header("이미지 업로드")
     uploaded_file = st.file_uploader("항공기 표면 사진을 올려주세요.", type=["jpg", "png", "jpeg"])
