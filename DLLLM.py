@@ -72,7 +72,7 @@ def generate_maintenance_report(defect_type, confidence):
     
     with st.spinner('정비 전문가 AI가 리포트를 작성 중입니다... (Ollama 실행 중)'):
         try:
-            response = ollama.chat(model='gemma2', messages=[
+            response = ollama.chat(model='phi3', messages=[
                 {'role': 'user', 'content': prompt},
             ])
             return response['message']['content']
