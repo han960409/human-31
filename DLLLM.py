@@ -38,7 +38,9 @@ def load_defect_model():
 def classify_defect(img_file, model):
     img = Image.open(img_file)
     
-    img = img.resize((IMG_HEIGHT, IMG_WIDTH)) 
+    img = img.convert('RGB') 
+    
+    img = img.resize((180, 180)) 
     
     img_array = tf.keras.preprocessing.image.img_to_array(img)
     img_array = tf.expand_dims(img_array, 0)
@@ -78,18 +80,24 @@ def generate_maintenance_report(defect_type, confidence):
             return f"LLM 호출 중 오류가 발생했습니다: {e}. Ollama가 실행 중인지 확인하세요."
 
 # --- Streamlit 웹 UI 구성 ---
-
-st.set_page_config(page_title="항공기 결함 진단 AI", page_icon="✈️", layout="wide")
-st.title("✈️ 항공기 결함 진단 어시스턴트")
+st.set_page_config(page_title="항공기 판넬 결함 진단 AI", page_icon="✈️", layout="wide")
+st.title("✈️ 항공기 판넬 결함 진단 어시스턴트")
 st.markdown("---")
 
 # 사이드바
-st.sidebar.header("시스템 정보")
-st.sidebar.info("i7-4770(CPU) / 16GB RAM 최적화")
+st.sidebar.header("적용 모델")
+st.sidebar.info("""
+데이터셋 딥러닝 : MobileNetV2  
+리포트 분석 : ollama Gemma2
+""")
 defect_model = load_defect_model()
 
-# 메인 화면
+# --- 1층: 이미지 업로드 및 진단 섹션 ---
 col1, col2 = st.columns([1, 1.5])
+
+# 분석 결과를 하단 문단에서 쓰기 위해 변수 초기화
+defect_type = None
+confidence = 0
 
 with col1:
     st.header("이미지 업로드")
@@ -117,16 +125,58 @@ with col2:
         
         if confidence < 80:
              st.warning("⚠️ 신뢰도가 낮습니다. 반드시 숙련된 정비사의 육안 확인이 필요합니다.")
-
-        if st.button('정비 리포트 생성 요청'):
-            report = generate_maintenance_report(defect_type, confidence)
-            st.markdown("### 📄 정비 전문가 AI 리포트")
-            st.write(report)
-
     elif defect_model is None:
         st.error("모델 로드 실패. MODEL_PATH를 확인하세요.")
     else:
         st.info("사진을 업로드하면 AI 분석이 시작됩니다.")
+
+# --- 🌟 2층: 정비 지원 리포트 섹션 (상태 유지 기능 추가) ---
+if defect_type:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.divider()
+    
+    st.header("📄 정비 지원 및 전문가 리포트")
+    st.info("딥러닝 분석 결과를 바탕으로 AI 전문가가 상세 정비 지침을 생성합니다.")
+
+    # 세션 상태 초기화 (리포트가 저장될 공간 생성)
+    if 'generated_report' not in st.session_state:
+        st.session_state.generated_report = None
+
+    # 리포트 생성 버튼
+    if st.button('🚀 정비 리포트 생성 요청', use_container_width=True):
+        report_text = generate_maintenance_report(defect_type, confidence)
+        # 생성된 리포트를 세션 상태에 저장합니다. (새로고침되어도 유지됨)
+        st.session_state.generated_report = report_text
+
+    # 세션 상태에 리포트가 있다면 화면에 표시
+    if st.session_state.generated_report:
+        report = st.session_state.generated_report
+        formatted_report = report.replace('\n', '<br>')
+        
+        # TXT 다운로드 파일 내용 구성
+        file_content = f"""[항공기 정비 지원 리포트]
+결함 종류: {defect_type.upper()}
+AI 신뢰도: {confidence:.2f}%
+-----------------------------------------
+{report}
+-----------------------------------------
+본 리포트는 AI 보조 도구이며 실무 적용 시 전문가의 확인이 필수입니다."""
+
+        # 다운로드 버튼
+        st.download_button(
+            label="📥 정비 리포트 TXT 다운로드",
+            data=file_content,
+            file_name=f"Report_{defect_type}.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+
+        st.markdown("### 📄 정비 전문가 AI 리포트")
+        st.markdown(f"""
+        <div style="background-color: white; border: 1px solid #e0e0e0; padding: 25px; border-radius: 10px; line-height: 1.8; color: #333;">
+            {formatted_report}
+        </div>
+        """, unsafe_allow_html=True)
 
 st.markdown("---")
 st.caption("© 2026 Aircraft Defect Detection System (Gemma2 based)")
